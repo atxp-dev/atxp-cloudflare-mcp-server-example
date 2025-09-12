@@ -14,7 +14,6 @@
 
 import 'dotenv/config';
 import { atxpClient, ATXPAccount } from '@atxp/client';
-
 // Default URLs
 const LOCAL_URL = 'http://localhost:8787';
 const REMOTE_URL = 'https://mcp-server.robdimarco-125.workers.dev';
@@ -174,13 +173,9 @@ function showUsage() {
   console.log(`  node scripts/test-atxp-client.js ${LOCAL_URL}     # Test local server`);
   console.log(`  node scripts/test-atxp-client.js ${REMOTE_URL}    # Test remote server`);
   console.log('');
-  console.log('Environment variables (optional for real payments):');
-  console.log('  SOLANA_ENDPOINT=https://api.mainnet-beta.solana.com');
-  console.log('  SOLANA_PRIVATE_KEY=your_base58_encoded_private_key');
-  console.log('');
   console.log('NPM scripts (recommended):');
-  console.log('  npm run test:atxp:local     # Test local development server');
-  console.log('  npm run test:atxp:remote    # Test deployed server');
+  console.log('  npm run test:local     # Test local development server');
+  console.log('  npm run test:remote    # Test deployed server');
 }
 
 // Handle help flag
