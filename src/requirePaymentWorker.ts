@@ -1,5 +1,6 @@
 import { RequirePaymentConfig, paymentRequiredError } from "@atxp/common";
 import { getATXPConfig, atxpAccountId } from "./atxpWorkerContext.js";
+import { ATXPMcpApi } from "./atxpMcpApi.js";
 
 // Extended config to support authenticated user override
 interface ExtendedPaymentConfig extends RequirePaymentConfig {
@@ -20,14 +21,17 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
     console.log('Worker context resource:', workerContext.getATXPResource()?.toString());
   }
   
-  // Get ATXP config from request-scoped context, fallback to global
+  // Get ATXP config from request-scoped context, fallback to API
   let config = getATXPConfig();
   console.log('ATXP config from request context:', config ? 'found' : 'null');
   
   if (!config) {
-    const { MyMCP } = await import('./index.js');
-    config = MyMCP.atxpConfig;
-    console.log('ATXP config from global fallback:', config ? 'found' : 'null');
+    try {
+      config = ATXPMcpApi.getConfig();
+      console.log('ATXP config from API fallback:', config ? 'found' : 'null');
+    } catch (error) {
+      console.log('ATXP config from API fallback: error -', error instanceof Error ? error.message : String(error));
+    }
   }
   
   if (!config) {
