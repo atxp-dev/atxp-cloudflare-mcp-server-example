@@ -1,33 +1,58 @@
 import { RequirePaymentConfig, paymentRequiredError } from "@atxp/common";
 import { getATXPConfig, atxpAccountId } from "./atxpWorkerContext.js";
 
-export async function requirePayment(paymentConfig: RequirePaymentConfig): Promise<void> {
+// Extended config to support authenticated user override
+interface ExtendedPaymentConfig extends RequirePaymentConfig {
+  authenticatedUser?: string;
+}
+
+export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Promise<void> {
+  console.log('=== REQUIRE PAYMENT DEBUG START ===');
   console.log('requirePayment called');
-  let config = getATXPConfig();
-  console.log('ATXP config from context:', config ? 'found' : 'null');
   
-  // Fallback to global config if context config is not available
+  // Debug current request context
+  const { getATXPWorkerContext } = await import('./atxpWorkerContext.js');
+  
+  const workerContext = getATXPWorkerContext();
+  console.log('Worker context in requirePayment:', workerContext ? 'found' : 'null');
+  if (workerContext) {
+    console.log('Worker context user ID:', workerContext.atxpAccountId());
+    console.log('Worker context resource:', workerContext.getATXPResource()?.toString());
+  }
+  
+  // Get ATXP config from request-scoped context, fallback to global
+  let config = getATXPConfig();
+  console.log('ATXP config from request context:', config ? 'found' : 'null');
+  
   if (!config) {
     const { MyMCP } = await import('./index.js');
     config = MyMCP.atxpConfig;
-    console.log('ATXP config from global:', config ? 'found' : 'null');
+    console.log('ATXP config from global fallback:', config ? 'found' : 'null');
   }
   
   if (!config) {
     throw new Error('No ATXP config found - payments cannot be processed');
   }
   
-  let user = atxpAccountId();
-  console.log('User from context:', user);
+  // Use authenticated user from props (preferred) or fallback to context
+  let user = paymentConfig.authenticatedUser;
+  console.log('User from props:', user);
   
-  // Fallback to globally stored user ID if context user is null
+  // Fallback to request-scoped context if not provided
+  if (!user) {
+    user = atxpAccountId();
+    console.log('User from request context fallback:', user);
+  }
+  
+  // Final fallback to MyMCP class (temporary)
   if (!user) {
     const { MyMCP } = await import('./index.js');
-    user = MyMCP.currentUserId;
-    console.log('User from global fallback:', user);
+    user = MyMCP.currentUser;
+    console.log('User from MyMCP class fallback:', user);
   }
   
   if (!user) {
+    console.log('=== NO USER FOUND - THROWING ERROR ===');
     throw new Error('No authenticated user found - payment required');
   }
 

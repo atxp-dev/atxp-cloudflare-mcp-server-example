@@ -4,11 +4,23 @@ import { z } from "zod";
 import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./requirePaymentWorker.js";
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
-import { clearATXPWorkerContext, buildWorkerATXPConfig } from "./atxpWorkerContext.js";
+import { buildWorkerATXPConfig, clearCurrentRequest, getATXPWorkerContext } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
+import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
+
+// Define auth context type for our ATXP integration
+interface ATXPAuthContext {
+  user?: string;
+  claims?: {
+    sub?: string;
+    name?: string;
+  };
+  [key: string]: unknown; // Index signature to satisfy Record<string, unknown> constraint
+}
 
 // Define our MCP agent with ATXP payment integration
-export class MyMCP extends McpAgent {
+export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 	server = new McpServer({
 		name: "ATXP-Protected Hello World MCP Server",
 		version: "1.0.0",
@@ -22,15 +34,27 @@ export class MyMCP extends McpAgent {
 			async ({ name }) => {
 				console.log('=== TOOL EXECUTION START ===');
 				console.log('Tool context check - ATXP config available?', MyMCP.atxpConfig ? 'YES' : 'NO');
-				const contextUser = (await import('./atxpWorkerContext.js')).atxpAccountId();
-				console.log('Tool context check - User from context:', contextUser);
+				
+				// Debug auth context from this.props (Cloudflare pattern)
+				console.log('this.props available:', this.props ? 'YES' : 'NO');
+				if (this.props) {
+					console.log('this.props keys:', Object.keys(this.props));
+					console.log('User from this.props:', this.props.user);
+					console.log('Claims from this.props:', this.props.claims);
+				}
+				
 				console.log('=== TOOL EXECUTION - CALLING requirePayment ===');
 				
 				// Require payment of 0.01 USDC before processing
-				await requirePayment({ price: new BigNumber(0.01) });
+				// Pass the authenticated user from this.props
+				await requirePayment({ 
+					price: new BigNumber(0.01),
+					authenticatedUser: this.props?.user
+				});
 
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";
-				const message = `${greeting} Thanks for your 0.01 USDC payment! 💰`;
+				const userInfo = this.props?.claims?.name || this.props?.user || "anonymous user";
+				const message = `${greeting} Thanks for your 0.01 USDC payment, ${userInfo}! 💰`;
 				
 				return {
 					content: [{ type: "text", text: message }],
@@ -45,8 +69,8 @@ export class MyMCP extends McpAgent {
 	// Store ATXP config globally for access during tool execution
 	public static atxpConfig: any = null;
 	
-	// Store current user ID globally for access during tool execution
-	public static currentUserId: string | null = null;
+	// Store current authenticated user for tool execution (temporary fallback)
+	public static currentUser: string | null = null;
 
 	// Initialize ATXP middleware
 	static initATXP(env: Env) {
@@ -68,15 +92,11 @@ export class MyMCP extends McpAgent {
 		MyMCP.atxpConfig = buildWorkerATXPConfig(atxpArgs);
 		MyMCP.atxpMiddleware = new ATXPWorkerMiddleware(MyMCP.atxpConfig);
 	}
-
 }
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		try {
-			// Clear any lingering context from previous requests
-			clearATXPWorkerContext();
-
 			const url = new URL(request.url);
 
 			// Handle OAuth metadata endpoint BEFORE authentication
@@ -95,6 +115,9 @@ export default {
 				});
 			}
 
+			// Initialize empty auth context
+			let authContext: ATXPAuthContext = {};
+
 			// Initialize ATXP middleware (with error handling for missing env vars)
 			try {
 				if (!MyMCP.atxpMiddleware) {
@@ -111,23 +134,51 @@ export default {
 				if (atxpResponse) {
 					return atxpResponse;
 				}
+
+				// DEBUG: Extract authentication data from ATXP context
+				const atxpWorkerContext = getATXPWorkerContext();
+				console.log('=== CONTEXT DEBUG IN MAIN FETCH ===');
+				console.log('getATXPWorkerContext() result:', atxpWorkerContext ? 'found' : 'null');
+				console.log('Context user ID:', atxpWorkerContext?.atxpAccountId() || 'null');
+				
+				if (atxpWorkerContext) {
+					const tokenData = atxpWorkerContext.getTokenData();
+					authContext = {
+						user: atxpWorkerContext.atxpAccountId() || undefined,
+						claims: {
+							sub: tokenData?.sub,
+							name: tokenData?.name,
+						}
+					};
+					
+					console.log('Populating ctx.props with auth context:', authContext);
+				} else {
+					console.log('No ATXP worker context found - authContext will be empty');
+				}
+
 			} catch (error) {
 				console.error('ATXP middleware error:', error);
 				// Continue without ATXP if there's an error
 			}
 
-			// Use standard MCP agent routing
+			// CRITICAL: Create extended context with props
+			const extendedCtx = {
+				...ctx,
+				props: authContext  // This is where ctx.props gets populated!
+			};
+
+			// Use standard MCP agent routing with extended context
 			if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-				return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
+				return MyMCP.serveSSE("/sse").fetch(request, env, extendedCtx);
 			}
 
 			if (url.pathname === "/mcp") {
-				return MyMCP.serve("/mcp").fetch(request, env, ctx);
+				return MyMCP.serve("/mcp").fetch(request, env, extendedCtx);
 			}
 
 			// Handle root path for MCP connections (what ATXP client expects)
 			if (url.pathname === "/") {
-				return MyMCP.serve("/").fetch(request, env, ctx);
+				return MyMCP.serve("/").fetch(request, env, extendedCtx);
 			}
 
 			return new Response("Not found", { status: 404 });
@@ -142,8 +193,8 @@ export default {
 				headers: { 'Content-Type': 'application/json' }
 			});
 		} finally {
-			// Clean up context after request
-			clearATXPWorkerContext();
+			// Don't clear context here - let it persist for async tool execution
+			// clearCurrentRequest();
 		}
 	},
 };

@@ -29,33 +29,48 @@ export class ATXPWorkerContext {
   }
 }
 
-// Global context holder - in a real implementation, you might want to use
-// Durable Objects or another mechanism to maintain state per request
+// Simple global context storage for Cloudflare Workers
+// Since each Worker handles one request at a time, this is safe
 let currentContext: ATXPWorkerContext | null = null;
+
+export function setCurrentRequestWithContext(request: Request, context: ATXPWorkerContext): void {
+  currentContext = context;
+  console.log(`Set ATXP context with user: ${context.atxpAccountId()}`);
+}
+
+// getCurrentRequest function removed - no longer needed with simplified context approach
+
+export function clearCurrentRequest() {
+  currentContext = null;
+}
 
 export function setATXPWorkerContext(context: ATXPWorkerContext) {
   currentContext = context;
 }
 
 export function getATXPWorkerContext(): ATXPWorkerContext | null {
-  return currentContext;
+  if (currentContext) {
+    console.log(`Retrieved ATXP context with user: ${currentContext.atxpAccountId()}`);
+    return currentContext;
+  }
+  return null;
 }
 
-export function clearATXPWorkerContext() {
-  currentContext = null;
-}
 
 // Helper functions that mirror the Express version
 export function getATXPConfig(): ATXPConfig | null {
-  return currentContext?.getATXPConfig() ?? null;
+  const context = getATXPWorkerContext();
+  return context?.getATXPConfig() ?? null;
 }
 
 export function getATXPResource(): URL | null {
-  return currentContext?.getATXPResource() ?? null;
+  const context = getATXPWorkerContext();
+  return context?.getATXPResource() ?? null;
 }
 
 export function atxpAccountId(): string | null {
-  return currentContext?.atxpAccountId() ?? null;
+  const context = getATXPWorkerContext();
+  return context?.atxpAccountId() ?? null;
 }
 
 // Build configuration for Cloudflare Workers

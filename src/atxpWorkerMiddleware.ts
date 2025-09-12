@@ -1,5 +1,5 @@
 import { ATXPArgs, ATXPConfig } from "@atxp/server";
-import { buildWorkerATXPConfig, ATXPWorkerContext, setATXPWorkerContext, clearATXPWorkerContext } from "./atxpWorkerContext.js";
+import { buildWorkerATXPConfig, ATXPWorkerContext, setCurrentRequestWithContext } from "./atxpWorkerContext.js";
 
 export class ATXPWorkerMiddleware {
   private config: ATXPConfig;
@@ -13,9 +13,6 @@ export class ATXPWorkerMiddleware {
       const logger = this.config.logger;
       const requestUrl = new URL(request.url);
       logger.debug(`ATXP Middleware: Handling ${request.method} ${requestUrl.toString()}`);
-
-      // Clear any existing context
-      clearATXPWorkerContext();
 
       // Create a basic resource URL
       const resource = new URL(requestUrl.origin);
@@ -43,22 +40,17 @@ export class ATXPWorkerMiddleware {
         return challengeResponse;
       }
       
-      // Create context with token data (if available)
+      // Create and store context for this request using new approach
       const context = new ATXPWorkerContext(this.config, resource, tokenCheck);
-      setATXPWorkerContext(context);
+      setCurrentRequestWithContext(request, context);
 
-      // Store the user ID globally to work around Cloudflare Workers context isolation
-      if (user) {
-        const { MyMCP } = await import('./index.js');
-        MyMCP.currentUserId = user;
-        logger.debug(`Stored user ID globally: ${user}`);
-      } else {
-        // Clear any existing user ID if no valid token
-        const { MyMCP } = await import('./index.js');
-        MyMCP.currentUserId = null;
-      }
+      // Also store the user directly on the MyMCP class for tool access (temporary fallback)
+      const { MyMCP } = await import('./index.js');
+      MyMCP.currentUser = user;
+      logger.debug(`Stored user on MyMCP class: ${user}`);
 
       logger.debug(`ATXP context set up for request. User: ${user || 'anonymous'}`);
+      logger.debug(`Context verification - stored user: ${context.atxpAccountId()}`);
 
       // Let the request continue to MCP handling
       return null;
