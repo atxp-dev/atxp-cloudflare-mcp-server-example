@@ -4,10 +4,8 @@ import { z } from "zod";
 import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./requirePaymentWorker.js";
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
-import { buildWorkerATXPConfig, clearCurrentRequest, getATXPWorkerContext } from "./atxpWorkerContext.js";
+import { buildWorkerATXPConfig, getATXPWorkerContext } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 
 // Define auth context type for our ATXP integration
 interface ATXPAuthContext {
@@ -32,19 +30,6 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 			"hello_world", 
 			{ name: z.string().optional() }, 
 			async ({ name }) => {
-				console.log('=== TOOL EXECUTION START ===');
-				console.log('Tool context check - ATXP config available?', MyMCP.atxpConfig ? 'YES' : 'NO');
-				
-				// Debug auth context from this.props (Cloudflare pattern)
-				console.log('this.props available:', this.props ? 'YES' : 'NO');
-				if (this.props) {
-					console.log('this.props keys:', Object.keys(this.props));
-					console.log('User from this.props:', this.props.user);
-					console.log('Claims from this.props:', this.props.claims);
-				}
-				
-				console.log('=== TOOL EXECUTION - CALLING requirePayment ===');
-				
 				// Require payment of 0.01 USDC before processing
 				// Pass the authenticated user from this.props
 				await requirePayment({ 
@@ -69,8 +54,7 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 	// Store ATXP config globally for access during tool execution
 	public static atxpConfig: any = null;
 	
-	// Store current authenticated user for tool execution (temporary fallback)
-	public static currentUser: string | null = null;
+	// Authentication now handled via ctx.props - no global state needed
 
 	// Initialize ATXP middleware
 	static initATXP(env: Env) {
@@ -121,12 +105,7 @@ export default {
 			// Initialize ATXP middleware (with error handling for missing env vars)
 			try {
 				if (!MyMCP.atxpMiddleware) {
-					console.log('Initializing ATXP middleware with env:', { 
-						FUNDING_DESTINATION: env.FUNDING_DESTINATION, 
-						FUNDING_NETWORK: env.FUNDING_NETWORK 
-					});
 					MyMCP.initATXP(env);
-					console.log('ATXP middleware initialized successfully');
 				}
 				
 				// Check if ATXP middleware should handle this request
@@ -137,9 +116,6 @@ export default {
 
 				// DEBUG: Extract authentication data from ATXP context
 				const atxpWorkerContext = getATXPWorkerContext();
-				console.log('=== CONTEXT DEBUG IN MAIN FETCH ===');
-				console.log('getATXPWorkerContext() result:', atxpWorkerContext ? 'found' : 'null');
-				console.log('Context user ID:', atxpWorkerContext?.atxpAccountId() || 'null');
 				
 				if (atxpWorkerContext) {
 					const tokenData = atxpWorkerContext.getTokenData();
@@ -150,15 +126,9 @@ export default {
 							name: tokenData?.name,
 						}
 					};
-					
-					console.log('Populating ctx.props with auth context:', authContext);
-				} else {
-					console.log('No ATXP worker context found - authContext will be empty');
 				}
-
 			} catch (error) {
 				console.error('ATXP middleware error:', error);
-				// Continue without ATXP if there's an error
 			}
 
 			// CRITICAL: Create extended context with props
@@ -192,9 +162,6 @@ export default {
 				status: 500,
 				headers: { 'Content-Type': 'application/json' }
 			});
-		} finally {
-			// Don't clear context here - let it persist for async tool execution
-			// clearCurrentRequest();
 		}
 	},
 };

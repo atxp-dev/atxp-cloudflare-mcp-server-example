@@ -42,15 +42,10 @@ export class ATXPWorkerMiddleware {
       
       // Create and store context for this request using new approach
       const context = new ATXPWorkerContext(this.config, resource, tokenCheck);
-      setCurrentRequestWithContext(request, context);
+      setCurrentRequestWithContext(context);
 
-      // Also store the user directly on the MyMCP class for tool access (temporary fallback)
-      const { MyMCP } = await import('./index.js');
-      MyMCP.currentUser = user;
-      logger.debug(`Stored user on MyMCP class: ${user}`);
+      // User authentication now handled via ctx.props - no need for global variable
 
-      logger.debug(`ATXP context set up for request. User: ${user || 'anonymous'}`);
-      logger.debug(`Context verification - stored user: ${context.atxpAccountId()}`);
 
       // Let the request continue to MCP handling
       return null;

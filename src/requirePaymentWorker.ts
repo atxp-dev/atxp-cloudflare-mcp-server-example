@@ -40,16 +40,11 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   
   // Fallback to request-scoped context if not provided
   if (!user) {
-    user = atxpAccountId();
+    user = atxpAccountId() || undefined;
     console.log('User from request context fallback:', user);
   }
   
-  // Final fallback to MyMCP class (temporary)
-  if (!user) {
-    const { MyMCP } = await import('./index.js');
-    user = MyMCP.currentUser;
-    console.log('User from MyMCP class fallback:', user);
-  }
+  // No more fallback needed - authentication should come from props or context
   
   if (!user) {
     console.log('=== NO USER FOUND - THROWING ERROR ===');

@@ -33,15 +33,8 @@ export class ATXPWorkerContext {
 // Since each Worker handles one request at a time, this is safe
 let currentContext: ATXPWorkerContext | null = null;
 
-export function setCurrentRequestWithContext(request: Request, context: ATXPWorkerContext): void {
+export function setCurrentRequestWithContext(context: ATXPWorkerContext): void {
   currentContext = context;
-  console.log(`Set ATXP context with user: ${context.atxpAccountId()}`);
-}
-
-// getCurrentRequest function removed - no longer needed with simplified context approach
-
-export function clearCurrentRequest() {
-  currentContext = null;
 }
 
 export function setATXPWorkerContext(context: ATXPWorkerContext) {
@@ -49,11 +42,7 @@ export function setATXPWorkerContext(context: ATXPWorkerContext) {
 }
 
 export function getATXPWorkerContext(): ATXPWorkerContext | null {
-  if (currentContext) {
-    console.log(`Retrieved ATXP context with user: ${currentContext.atxpAccountId()}`);
-    return currentContext;
-  }
-  return null;
+  return currentContext;
 }
 
 
