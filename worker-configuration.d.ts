@@ -5,9 +5,9 @@ declare namespace Cloudflare {
 	interface Env {
 		MCP_OBJECT: DurableObjectNamespace<import("./src/index").MyMCP>;
 		// ATXP Environment Variables
-		SOLANA_DESTINATION?: string;
+		FUNDING_DESTINATION: string;
+		FUNDING_NETWORK: string;
 		ATXP_SERVER?: string;
-		ATXP_AUTH_CLIENT_TOKEN?: string;
 		NODE_ENV?: string;
 	}
 }

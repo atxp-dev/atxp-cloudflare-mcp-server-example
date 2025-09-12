@@ -5,6 +5,7 @@ import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./requirePaymentWorker.js";
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
 import { clearATXPWorkerContext } from "./atxpWorkerContext.js";
+import { Network } from "@atxp/common";
 
 // Define our MCP agent with ATXP payment integration
 export class MyMCP extends McpAgent {
@@ -37,17 +38,18 @@ export class MyMCP extends McpAgent {
 
 	// Initialize ATXP middleware
 	static initATXP(env: Env) {
-		if (!env.SOLANA_DESTINATION) {
-			console.warn('SOLANA_DESTINATION environment variable not set - running in demo mode');
+		if (!env.FUNDING_DESTINATION) {
+			throw new Error('FUNDING_DESTINATION environment variable not set - running in demo mode');
+		}
+		if (!env.FUNDING_NETWORK) {
+			throw new Error('FUNDING_NETWORK environment variable not set - running in demo mode');
 		}
 
 		MyMCP.atxpMiddleware = new ATXPWorkerMiddleware({
-			destination: env.SOLANA_DESTINATION || 'demo-destination',
-			server: (env.ATXP_SERVER || 'https://auth.atxp.ai') as any,
+			destination: env.FUNDING_DESTINATION!,
+			network: env.FUNDING_NETWORK as Network,
 			payeeName: 'ATXP MCP Server Demo',
 			allowHttp: env.NODE_ENV === 'development',
-			currency: 'USDC' as const,
-			network: 'base' as const,
 		});
 	}
 
@@ -84,6 +86,11 @@ export default {
 
 			if (url.pathname === "/mcp") {
 				return MyMCP.serve("/mcp").fetch(request, env, ctx);
+			}
+
+			// Handle root path for MCP connections (what ATXP client expects)
+			if (url.pathname === "/") {
+				return MyMCP.serve("/").fetch(request, env, ctx);
 			}
 
 			return new Response("Not found", { status: 404 });
