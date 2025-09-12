@@ -2,6 +2,7 @@
 	"name": "remote-mcp-server-authless",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
@@ -9,7 +10,10 @@
 		"lint:fix": "biome lint --fix",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"test:local": "node scripts/test-mcp-client.js http://localhost:8787/sse",
+		"test:remote": "node scripts/test-mcp-client.js https://mcp-server.robdimarco-125.workers.dev/sse",
+		"test": "npm run test:remote"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "1.17.5",
