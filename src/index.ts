@@ -4,7 +4,7 @@ import { z } from "zod";
 import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./requirePaymentWorker.js";
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
-import { clearATXPWorkerContext } from "./atxpWorkerContext.js";
+import { clearATXPWorkerContext, buildWorkerATXPConfig } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
 
 // Define our MCP agent with ATXP payment integration
@@ -20,11 +20,17 @@ export class MyMCP extends McpAgent {
 			"hello_world", 
 			{ name: z.string().optional() }, 
 			async ({ name }) => {
+				console.log('=== TOOL EXECUTION START ===');
+				console.log('Tool context check - ATXP config available?', MyMCP.atxpConfig ? 'YES' : 'NO');
+				const contextUser = (await import('./atxpWorkerContext.js')).atxpAccountId();
+				console.log('Tool context check - User from context:', contextUser);
+				console.log('=== TOOL EXECUTION - CALLING requirePayment ===');
+				
 				// Require payment of 0.01 USDC before processing
 				await requirePayment({ price: new BigNumber(0.01) });
 
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";
-				const message = `${greeting} [Demo Mode: Payment of 0.01 USDC simulated] 💰`;
+				const message = `${greeting} Thanks for your 0.01 USDC payment! 💰`;
 				
 				return {
 					content: [{ type: "text", text: message }],
@@ -35,6 +41,12 @@ export class MyMCP extends McpAgent {
 
 	// Static ATXP middleware instance
 	public static atxpMiddleware: ATXPWorkerMiddleware | null = null;
+	
+	// Store ATXP config globally for access during tool execution
+	public static atxpConfig: any = null;
+	
+	// Store current user ID globally for access during tool execution
+	public static currentUserId: string | null = null;
 
 	// Initialize ATXP middleware
 	static initATXP(env: Env) {
@@ -45,12 +57,16 @@ export class MyMCP extends McpAgent {
 			throw new Error('FUNDING_NETWORK environment variable not set - running in demo mode');
 		}
 
-		MyMCP.atxpMiddleware = new ATXPWorkerMiddleware({
+		const atxpArgs = {
 			destination: env.FUNDING_DESTINATION!,
 			network: env.FUNDING_NETWORK as Network,
 			payeeName: 'ATXP MCP Server Demo',
 			allowHttp: env.NODE_ENV === 'development',
-		});
+		};
+
+		// Build config once and reuse it
+		MyMCP.atxpConfig = buildWorkerATXPConfig(atxpArgs);
+		MyMCP.atxpMiddleware = new ATXPWorkerMiddleware(MyMCP.atxpConfig);
 	}
 
 }
@@ -61,10 +77,33 @@ export default {
 			// Clear any lingering context from previous requests
 			clearATXPWorkerContext();
 
+			const url = new URL(request.url);
+
+			// Handle OAuth metadata endpoint BEFORE authentication
+			if (url.pathname === "/.well-known/oauth-protected-resource") {
+				const metadata = {
+					resource: url.origin + "/",
+					resource_name: "ATXP MCP Server Demo",
+					authorization_servers: ["https://auth.atxp.ai"],
+					bearer_methods_supported: ["header"],
+					scopes_supported: ["read", "write"],
+				};
+				
+				return new Response(JSON.stringify(metadata), {
+					status: 200,
+					headers: { "Content-Type": "application/json" }
+				});
+			}
+
 			// Initialize ATXP middleware (with error handling for missing env vars)
 			try {
 				if (!MyMCP.atxpMiddleware) {
+					console.log('Initializing ATXP middleware with env:', { 
+						FUNDING_DESTINATION: env.FUNDING_DESTINATION, 
+						FUNDING_NETWORK: env.FUNDING_NETWORK 
+					});
 					MyMCP.initATXP(env);
+					console.log('ATXP middleware initialized successfully');
 				}
 				
 				// Check if ATXP middleware should handle this request
@@ -76,8 +115,6 @@ export default {
 				console.error('ATXP middleware error:', error);
 				// Continue without ATXP if there's an error
 			}
-
-			const url = new URL(request.url);
 
 			// Use standard MCP agent routing
 			if (url.pathname === "/sse" || url.pathname === "/sse/message") {
