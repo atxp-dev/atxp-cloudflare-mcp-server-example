@@ -2,8 +2,8 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BigNumber } from "bignumber.js";
-import { requirePayment } from "./requirePaymentWorker.js";
-import { ATXPAuthContext, atxpCloudflareWorkerFromEnv } from "./atxpMcpApi.js";
+import { requirePayment } from "./atxp/requirePaymentWorker.js";
+import { ATXPAuthContext, atxpCloudflareWorkerFromEnv } from "./atxp/atxpMcpApi.js";
 
 // Define our MCP agent with ATXP payment integration
 export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
