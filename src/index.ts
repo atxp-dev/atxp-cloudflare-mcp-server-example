@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./requirePaymentWorker.js";
-import { ATXPMcpApi, ATXPAuthContext, ATXPEnv, initATXPFromEnv } from "./atxpMcpApi.js";
+import { ATXPAuthContext, atxpCloudflareWorkerFromEnv } from "./atxpMcpApi.js";
 
 // Define our MCP agent with ATXP payment integration
 export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
@@ -34,76 +34,11 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 				};
 			}
 		);
-	}
-
-	// ATXP functionality now handled by ATXPMcpApi
+	}	
 }
 
-export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		try {
-			const url = new URL(request.url);
-
-			// Handle OAuth metadata endpoint BEFORE authentication
-			if (url.pathname === "/.well-known/oauth-protected-resource") {
-				return ATXPMcpApi.createOAuthMetadata(
-					url.origin + "/",
-					"ATXP MCP Server Demo"
-				);
-			}
-
-			// Initialize empty auth context
-			let authContext: ATXPAuthContext = {};
-
-			// Initialize ATXP middleware (with error handling for missing env vars)
-			try {
-				if (!ATXPMcpApi.isInitialized()) {
-					initATXPFromEnv(env, "ATXP MCP Server Demo");
-				}
-				
-				// Check if ATXP middleware should handle this request
-				const atxpResponse = await ATXPMcpApi.getMiddleware().handleRequest(request, env);
-				if (atxpResponse) {
-					return atxpResponse;
-				}
-
-				// Extract authentication data from ATXP context
-				authContext = ATXPMcpApi.createAuthContext();
-			} catch (error) {
-				console.error('ATXP middleware error:', error);
-			}
-
-			// CRITICAL: Create extended context with props
-			const extendedCtx = {
-				...ctx,
-				props: authContext  // This is where ctx.props gets populated!
-			};
-
-			// Use standard MCP agent routing with extended context
-			if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-				return MyMCP.serveSSE("/sse").fetch(request, env, extendedCtx);
-			}
-
-			if (url.pathname === "/mcp") {
-				return MyMCP.serve("/mcp").fetch(request, env, extendedCtx);
-			}
-
-			// Handle root path for MCP connections (what ATXP client expects)
-			if (url.pathname === "/") {
-				return MyMCP.serve("/").fetch(request, env, extendedCtx);
-			}
-
-			return new Response("Not found", { status: 404 });
-			
-		} catch (error) {
-			console.error('Error in main fetch handler:', error);
-			return new Response(JSON.stringify({
-				error: 'server_error',
-				error_description: error instanceof Error ? error.message : 'Unknown error'
-			}), {
-				status: 500,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-	},
-};
+// Use the new simplified ATXP Cloudflare Worker wrapper
+export default atxpCloudflareWorkerFromEnv({
+	mcpAgent: MyMCP,
+	serviceName: "ATXP MCP Server Demo"
+});

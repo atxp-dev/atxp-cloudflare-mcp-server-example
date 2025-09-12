@@ -162,3 +162,154 @@ export function initATXPFromEnv(env: ATXPEnv, payeeName?: string): void {
     allowHttp: env.NODE_ENV === 'development',
   });
 }
+
+/**
+ * Cloudflare Workers ATXP handler function - similar to atxpServer but for Workers
+ */
+export interface ATXPCloudflareWorkerHandler {
+  (request: Request, env: any, ctx: ExecutionContext): Promise<Response | null>;
+}
+
+export interface ATXPCloudflareWorkerOptions {
+  /** Configuration for ATXP */
+  config: ATXPMcpConfig;
+  /** The MCP agent class to wrap */
+  mcpAgent: any;
+  /** Service name for OAuth metadata */
+  serviceName?: string;
+  /** Mount paths for MCP endpoints */
+  mountPaths?: {
+    mcp?: string;
+    sse?: string;
+    root?: string;
+  };
+}
+
+/**
+ * Cloudflare Workers equivalent of atxpServer() - wraps an MCP server with ATXP authentication and payments
+ * 
+ * Usage:
+ * ```typescript
+ * export default atxpCloudflareWorker({
+ *   config: { fundingDestination: "0x...", fundingNetwork: "base" },
+ *   mcpAgent: MyMCP,
+ *   serviceName: "My MCP Server"
+ * });
+ * ```
+ */
+export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
+  const { 
+    config, 
+    mcpAgent, 
+    serviceName = "ATXP MCP Server",
+    mountPaths = { mcp: "/mcp", sse: "/sse", root: "/" }
+  } = options;
+  
+  // Initialize ATXP with the provided config
+  if (!ATXPMcpApi.isInitialized()) {
+    ATXPMcpApi.init(config);
+  }
+  
+  return {
+    async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+      try {
+        const url = new URL(request.url);
+
+        // Handle OAuth metadata endpoint BEFORE authentication
+        if (url.pathname === "/.well-known/oauth-protected-resource") {
+          return ATXPMcpApi.createOAuthMetadata(url.origin + "/", serviceName);
+        }
+
+        // Initialize empty auth context
+        let authContext: ATXPAuthContext = {};
+
+        // Handle ATXP middleware processing
+        try {
+          // Check if ATXP middleware should handle this request
+          const atxpResponse = await ATXPMcpApi.getMiddleware().handleRequest(request, env);
+          if (atxpResponse) {
+            return atxpResponse;
+          }
+
+          // Extract authentication data from ATXP context
+          authContext = ATXPMcpApi.createAuthContext();
+        } catch (error) {
+          console.error('ATXP middleware error:', error);
+        }
+
+        // Create extended context with props for MCP handler
+        const extendedCtx = {
+          ...ctx,
+          props: authContext
+        };
+
+        // Route to appropriate MCP endpoints
+        if (url.pathname === mountPaths.sse || url.pathname === mountPaths.sse + "/message") {
+          return mcpAgent.serveSSE(mountPaths.sse).fetch(request, env, extendedCtx);
+        }
+
+        if (url.pathname === mountPaths.mcp) {
+          return mcpAgent.serve(mountPaths.mcp).fetch(request, env, extendedCtx);
+        }
+
+        // Handle root path for MCP connections
+        if (url.pathname === mountPaths.root) {
+          return mcpAgent.serve(mountPaths.root).fetch(request, env, extendedCtx);
+        }
+
+        return new Response("Not found", { status: 404 });
+
+      } catch (error) {
+        console.error('Error in ATXP Cloudflare Worker handler:', error);
+        return new Response(JSON.stringify({
+          error: 'server_error',
+          error_description: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+  };
+}
+
+/**
+ * Convenience function to create ATXP Cloudflare Worker from environment variables
+ * 
+ * Usage:
+ * ```typescript
+ * export default atxpCloudflareWorkerFromEnv({
+ *   mcpAgent: MyMCP,
+ *   serviceName: "My MCP Server"
+ * });
+ * ```
+ */
+export function atxpCloudflareWorkerFromEnv(options: {
+  mcpAgent: any;
+  serviceName?: string;
+  mountPaths?: { mcp?: string; sse?: string; root?: string; };
+}) {
+  return {
+    async fetch(request: Request, env: ATXPEnv, ctx: ExecutionContext): Promise<Response> {
+      // Initialize from environment on first request
+      if (!ATXPMcpApi.isInitialized()) {
+        initATXPFromEnv(env, options.serviceName);
+      }
+
+      // Use the main atxpCloudflareWorker function
+      const handler = atxpCloudflareWorker({
+        config: {
+          fundingDestination: env.FUNDING_DESTINATION!,
+          fundingNetwork: env.FUNDING_NETWORK as Network,
+          payeeName: options.serviceName || 'MCP Server',
+          allowHttp: env.NODE_ENV === 'development'
+        },
+        mcpAgent: options.mcpAgent,
+        serviceName: options.serviceName,
+        mountPaths: options.mountPaths
+      });
+
+      return handler.fetch(request, env, ctx);
+    }
+  };
+}
