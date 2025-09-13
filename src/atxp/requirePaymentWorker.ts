@@ -10,41 +10,16 @@ interface ExtendedPaymentConfig extends RequirePaymentConfig {
 }
 
 export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Promise<void> {
-  console.log('=== REQUIRE PAYMENT DEBUG START ===');
-  console.log('requirePayment called');
-  
-  // Debug current request context
-  const { getATXPWorkerContext } = await import('./atxpWorkerContext.js');
-  
-  const workerContext = getATXPWorkerContext();
-  console.log('Worker context in requirePayment:', workerContext ? 'found' : 'null');
-  if (workerContext) {
-    console.log('Worker context user ID:', workerContext.atxpAccountId());
-    console.log('Worker context resource:', workerContext.getATXPResource()?.toString());
-  }
-  
-  // Get ATXP config: try request context first, then API, then initialize from params
+  // Get ATXP config: try request context first, then initialize from params if needed
   let config = getATXPConfig();
-  console.log('ATXP config from request context:', config ? 'found' : 'null');
   
-  if (!config) {
-    try {
-      config = ATXPMcpApi.getConfig();
-      console.log('ATXP config from API fallback:', config ? 'found' : 'null');
-    } catch (error) {
-      console.log('ATXP config from API fallback: error -', error instanceof Error ? error.message : String(error));
-    }
-  }
-  
-  // If still no config and we have init params, initialize ATXP in this Durable Object
+  // If no config and we have init params, initialize ATXP in this Durable Object
   if (!config && paymentConfig.atxpInitParams) {
-    console.log('Initializing ATXP in Durable Object with params:', paymentConfig.atxpInitParams);
     try {
       ATXPMcpApi.init(paymentConfig.atxpInitParams);
       config = ATXPMcpApi.getConfig();
-      console.log('ATXP initialized in Durable Object:', config ? 'success' : 'failed');
     } catch (error) {
-      console.log('ATXP initialization failed:', error instanceof Error ? error.message : String(error));
+      config?.logger?.error(`ATXP initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
@@ -54,18 +29,13 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   
   // Use authenticated user from props (preferred) or fallback to context
   let user = paymentConfig.authenticatedUser;
-  console.log('User from props:', user);
   
   // Fallback to request-scoped context if not provided
   if (!user) {
     user = atxpAccountId() || undefined;
-    console.log('User from request context fallback:', user);
   }
   
-  // No more fallback needed - authentication should come from props or context
-  
   if (!user) {
-    console.log('=== NO USER FOUND - THROWING ERROR ===');
     throw new Error('No authenticated user found - payment required');
   }
 
@@ -82,11 +52,7 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   
   try {
     // Use the real payment server to charge the user
-    console.log('About to charge:', JSON.stringify(charge, null, 2));
     const result = await config.paymentServer.charge(charge);
-    console.log('Charge result:', JSON.stringify(result, null, 2));
-    console.log('Charge result success property:', result.success);
-    console.log('Charge result type:', typeof result.success);
     
     if (!result.success) {
       config.logger?.info(`Payment failed, creating payment request`);

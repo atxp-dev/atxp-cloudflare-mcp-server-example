@@ -43,10 +43,7 @@ export class ATXPWorkerMiddleware {
       // Create and store context for this request using new approach
       const context = new ATXPWorkerContext(this.config, resource, tokenCheck);
       setCurrentRequestWithContext(context);
-
-      // User authentication now handled via ctx.props - no need for global variable
-
-
+      
       // Let the request continue to MCP handling
       return null;
 
