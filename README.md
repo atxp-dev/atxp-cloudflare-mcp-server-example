@@ -83,9 +83,34 @@ npm run test:local
 npm run test:remote
 ```
 
-## Creating Your Own ATXP-Protected Tools
+## Creating Your Own ATXP-Protected Server
 
-Add payment-protected tools in `src/index.ts`:
+### 1. Set Up the Fetch Handler
+
+Create your main handler in `src/index.ts`:
+
+```typescript
+import { atxpCloudflareWorkerFromEnv } from "./atxp/atxpMcpApi.js";
+
+export default {
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    // Create the handler with environment-based configuration
+    const handler = atxpCloudflareWorkerFromEnv({
+      mcpAgent: MyMCP,
+      serviceName: "ATXP MCP Server Demo",
+      allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
+      fundingDestination: env.FUNDING_DESTINATION,
+      fundingNetwork: env.FUNDING_NETWORK
+    });
+    
+    return handler.fetch(request, env, ctx);
+  }
+};
+```
+
+### 2. Add Payment-Protected Tools
+
+Add payment-protected tools in your MCP class:
 
 ```typescript
 // Add to MyMCP class init() method
@@ -112,9 +137,36 @@ this.server.tool(
 
 ### ATXP Integration Functions
 
-- `atxpCloudflareWorkerFromEnv()` - Main wrapper for environment-based config
-- `atxpCloudflareWorker()` - Lower-level wrapper with explicit config
-- `requirePayment()` - Payment enforcement in tool handlers
+#### `atxpCloudflareWorkerFromEnv(options)`
+
+Main wrapper for creating ATXP-protected Cloudflare Workers:
+
+```typescript
+atxpCloudflareWorkerFromEnv({
+  mcpAgent: MyMCP,                    // Your MCP agent class
+  serviceName?: string,               // Display name for OAuth
+  allowHttp?: boolean,                // Allow HTTP for development
+  fundingDestination: string,         // Wallet address for payments
+  fundingNetwork: Network,            // Blockchain network ("base", etc.)
+  mountPaths?: {                      // Optional custom paths
+    mcp?: string,
+    sse?: string, 
+    root?: string
+  }
+})
+```
+
+#### `requirePayment(config)`
+
+Payment enforcement in tool handlers:
+
+```typescript
+await requirePayment({
+  price: BigNumber,                   // Payment amount in USDC
+  authenticatedUser?: string,         // User ID from this.props?.user
+  atxpInitParams?: ATXPMcpConfig     // ATXP config from this.props?.atxpInitParams
+});
+```
 
 ### Environment Variables
 
