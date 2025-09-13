@@ -4,6 +4,11 @@
 declare namespace Cloudflare {
 	interface Env {
 		MCP_OBJECT: DurableObjectNamespace<import("./src/index").MyMCP>;
+		// ATXP Environment Variables
+		FUNDING_DESTINATION: string;
+		FUNDING_NETWORK: string;
+		ATXP_SERVER?: string;
+		NODE_ENV?: string;
 	}
 }
 interface Env extends Cloudflare.Env {}

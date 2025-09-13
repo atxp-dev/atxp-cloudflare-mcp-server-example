@@ -1,41 +1,55 @@
 import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { BigNumber } from "bignumber.js";
+import { requirePayment } from "./atxp/requirePaymentWorker.js";
+import { ATXPAuthContext, atxpCloudflareWorkerFromEnv } from "./atxp/atxpMcpApi.js";
 
-// Define our MCP agent with tools
-export class MyMCP extends McpAgent {
+// Define our MCP agent with ATXP payment integration
+export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 	server = new McpServer({
-		name: "Hello World MCP Server",
+		name: "ATXP-Protected Hello World MCP Server",
 		version: "1.0.0",
 	});
 
 	async init() {
-		// Simple hello_world tool
+		// Payment-protected hello_world tool
 		this.server.tool(
 			"hello_world", 
 			{ name: z.string().optional() }, 
 			async ({ name }) => {
+				// Require payment of 0.01 USDC before processing
+				// Pass the authenticated user and ATXP init params from this.props
+				await requirePayment({ 
+					price: new BigNumber(0.01),
+					authenticatedUser: this.props?.user,
+					atxpInitParams: this.props?.atxpInitParams
+				});
+
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";
+				const userInfo = this.props?.claims?.name || this.props?.user || "anonymous user";
+				const message = `${greeting} Thanks for your 0.01 USDC payment, ${userInfo}! 💰`;
+				
 				return {
-					content: [{ type: "text", text: greeting }],
+					content: [{ type: "text", text: message }],
 				};
 			}
 		);
-	}
+	}	
 }
 
+// Use the new simplified ATXP Cloudflare Worker wrapper
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		const url = new URL(request.url);
-
-		if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-			return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
-		}
-
-		if (url.pathname === "/mcp") {
-			return MyMCP.serve("/mcp").fetch(request, env, ctx);
-		}
-
-		return new Response("Not found", { status: 404 });
-	},
+	async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+		// Create the handler with environment-based configuration
+		const handler = atxpCloudflareWorkerFromEnv({
+			mcpAgent: MyMCP,
+			serviceName: "ATXP MCP Server Demo",
+			allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
+			fundingDestination: env.FUNDING_DESTINATION,
+			fundingNetwork: env.FUNDING_NETWORK
+		});
+		
+		return handler.fetch(request, env, ctx);
+	}
 };

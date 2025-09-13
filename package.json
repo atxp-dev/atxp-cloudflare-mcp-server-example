@@ -1,5 +1,5 @@
 {
-	"name": "remote-mcp-server-authless",
+	"name": "atxp-cloudflare-mcp-example",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -11,14 +11,19 @@
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
 		"type-check": "tsc --noEmit",
-		"test:local": "node scripts/test-mcp-client.js http://localhost:8787/sse",
-		"test:remote": "node scripts/test-mcp-client.js https://mcp-server.robdimarco-125.workers.dev/sse",
+		"test:local": "node scripts/test-atxp-client.js http://localhost:8787",
+		"test:remote": "node scripts/test-atxp-client.js https://mcp-server.robdimarco-125.workers.dev",
 		"test": "npm run test:remote"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "1.17.5",
 		"agents": "^0.1.2",
-		"zod": "^3.25.76"
+		"zod": "^3.25.76",
+		"@atxp/server": "^0.2.22",
+		"@atxp/common": "^0.2.22",
+		"@atxp/client": "^0.2.22",
+		"bignumber.js": "^9.1.2",
+		"dotenv": "^16.4.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",

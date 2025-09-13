@@ -32,7 +32,21 @@
 	},
 	"observability": {
 		"enabled": true
+	},
+	/**
+	 * Environment Variables for ATXP
+	 */
+	"vars": {
+		"ATXP_SERVER": "https://auth.atxp.ai",
+		"FUNDING_DESTINATION": "0x7F9D1a879750168b8f4A59734B1262D1778fDB5A",
+		"FUNDING_NETWORK": "base",
+		"ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE": "false"
 	}
+	/**
+	 * Secrets (set via wrangler secret put):
+	 * - SOLANA_DESTINATION: Required Solana wallet address for payments
+	 * - ATXP_AUTH_CLIENT_TOKEN: Optional ATXP authentication token
+	 */
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -43,15 +57,6 @@
 	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 */
-	// "vars": { "MY_VARIABLE": "production_value" }
-	/**
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
 	/**
 	 * Static Assets
