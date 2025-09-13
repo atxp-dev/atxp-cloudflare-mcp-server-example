@@ -143,7 +143,7 @@ export class ATXPMcpApi {
 export interface ATXPEnv {
   FUNDING_DESTINATION?: string;
   FUNDING_NETWORK?: string;
-  NODE_ENV?: string;
+  ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE?: string;
 }
 
 /**
@@ -161,7 +161,7 @@ export function initATXPFromEnv(env: ATXPEnv, payeeName?: string): void {
     fundingDestination: env.FUNDING_DESTINATION,
     fundingNetwork: env.FUNDING_NETWORK as Network,
     payeeName: payeeName || 'MCP Server',
-    allowHttp: env.NODE_ENV === 'development',
+    allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
   });
 }
 
@@ -304,7 +304,7 @@ export function atxpCloudflareWorkerFromEnv(options: {
           fundingDestination: env.FUNDING_DESTINATION!,
           fundingNetwork: env.FUNDING_NETWORK as Network,
           payeeName: options.serviceName || 'MCP Server',
-          allowHttp: env.NODE_ENV === 'development'
+          allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true'
         },
         mcpAgent: options.mcpAgent,
         serviceName: options.serviceName,
