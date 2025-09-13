@@ -175,30 +175,6 @@ await requirePayment({
 - `ATXP_SERVER` - ATXP authentication server URL
 - `ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE` - HTTP allowance for development
 
-## Security
-
-- Production uses HTTPS-only OAuth flows
-- Payments are settled on-chain with cryptographic proof
-- Authentication tokens are introspected with ATXP servers
-- Race conditions prevented through proper context isolation
-
-## Development vs Production
-
-| Feature | Development | Production |
-|---------|-------------|------------|
-| HTTP Requests | Allowed | Blocked |
-| OAuth Flow | Local callback | HTTPS callback |
-| Payments | Test network | Mainnet (Base) |
-| Debugging | Console logs | Minimal logging |
-
-## Testing
-
-The project includes comprehensive testing:
-
-- Local development server testing
-- Production deployment verification  
-- Payment flow validation
-- Authentication integration testing
 
 ## Contributing
 
