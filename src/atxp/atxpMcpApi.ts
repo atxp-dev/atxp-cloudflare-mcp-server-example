@@ -146,24 +146,6 @@ export interface ATXPEnv {
   ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE?: string;
 }
 
-/**
- * Helper function to initialize ATXP from Cloudflare Workers environment
- */
-export function initATXPFromEnv(env: ATXPEnv, payeeName?: string, allowHttp?: boolean): void {
-  if (!env.FUNDING_DESTINATION) {
-    throw new Error('FUNDING_DESTINATION environment variable not set');
-  }
-  if (!env.FUNDING_NETWORK) {
-    throw new Error('FUNDING_NETWORK environment variable not set');
-  }
-
-  ATXPMcpApi.init({
-    fundingDestination: env.FUNDING_DESTINATION,
-    fundingNetwork: env.FUNDING_NETWORK as Network,
-    payeeName: payeeName || 'MCP Server',
-    allowHttp: allowHttp || false,
-  });
-}
 
 /**
  * Cloudflare Workers ATXP handler function - similar to atxpServer but for Workers
@@ -281,14 +263,22 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
 }
 
 /**
- * Convenience function to create ATXP Cloudflare Worker from environment variables
+ * Convenience function to create ATXP Cloudflare Worker with environment-based configuration
  * 
  * Usage:
  * ```typescript
- * export default atxpCloudflareWorkerFromEnv({
- *   mcpAgent: MyMCP,
- *   serviceName: "My MCP Server"
- * });
+ * export default {
+ *   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+ *     const handler = atxpCloudflareWorkerFromEnv({
+ *       mcpAgent: MyMCP,
+ *       serviceName: "My MCP Server",
+ *       allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
+ *       fundingDestination: env.FUNDING_DESTINATION,
+ *       fundingNetwork: env.FUNDING_NETWORK
+ *     });
+ *     return handler.fetch(request, env, ctx);
+ *   }
+ * };
  * ```
  */
 export function atxpCloudflareWorkerFromEnv(options: {
@@ -296,14 +286,16 @@ export function atxpCloudflareWorkerFromEnv(options: {
   serviceName?: string;
   mountPaths?: { mcp?: string; sse?: string; root?: string; };
   allowHttp?: boolean;
+  fundingDestination: string;
+  fundingNetwork: Network;
 }) {
   return {
     async fetch(request: Request, env: ATXPEnv, ctx: ExecutionContext): Promise<Response> {
-      // Use the main atxpCloudflareWorker function with env-based config
+      // Use the main atxpCloudflareWorker function with parameter-based config
       const handler = atxpCloudflareWorker({
         config: {
-          fundingDestination: env.FUNDING_DESTINATION!,
-          fundingNetwork: env.FUNDING_NETWORK as Network,
+          fundingDestination: options.fundingDestination,
+          fundingNetwork: options.fundingNetwork,
           payeeName: options.serviceName || 'MCP Server',
           allowHttp: options.allowHttp || false
         },

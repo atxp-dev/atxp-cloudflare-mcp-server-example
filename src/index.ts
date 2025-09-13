@@ -41,11 +41,13 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 // Use the new simplified ATXP Cloudflare Worker wrapper
 export default {
 	async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-		// Create the handler with environment-based allowHttp setting
+		// Create the handler with environment-based configuration
 		const handler = atxpCloudflareWorkerFromEnv({
 			mcpAgent: MyMCP,
 			serviceName: "ATXP MCP Server Demo",
-			allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true'
+			allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
+			fundingDestination: env.FUNDING_DESTINATION,
+			fundingNetwork: env.FUNDING_NETWORK
 		});
 		
 		return handler.fetch(request, env, ctx);
