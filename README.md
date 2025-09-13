@@ -21,7 +21,7 @@ This example demonstrates how to build a payment-protected MCP server using ATXP
 ### Prerequisites
 
 1. Cloudflare account with Workers enabled
-2. ATXP account for payments (sign up at https://auth.atxp.ai)
+2. ATXP account for payments (sign up at https://accounts.atxp.ai)
 3. Cryptocurrency wallet for receiving payments
 
 ### Environment Configuration
