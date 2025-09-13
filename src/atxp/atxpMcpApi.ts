@@ -1,6 +1,7 @@
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
 import { buildWorkerATXPConfig, getATXPWorkerContext } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
+import { ATXPConfig } from "@atxp/server";
 
 /**
  * Configuration options for initializing ATXP with MCP servers
@@ -26,6 +27,7 @@ export interface ATXPAuthContext {
     name?: string;
     [key: string]: any;
   };
+  atxpInitParams?: ATXPMcpConfig;  // Pass ATXP initialization params to Durable Object
   [key: string]: unknown;
 }
 
@@ -205,14 +207,14 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
     mountPaths = { mcp: "/mcp", sse: "/sse", root: "/" }
   } = options;
   
-  // Initialize ATXP with the provided config
-  if (!ATXPMcpApi.isInitialized()) {
-    ATXPMcpApi.init(config);
-  }
-  
   return {
     async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
       try {
+        // Initialize ATXP for each request in case of Cloudflare Workers isolation
+        if (!ATXPMcpApi.isInitialized()) {
+          ATXPMcpApi.init(config);
+        }
+        
         const url = new URL(request.url);
 
         // Handle OAuth metadata endpoint BEFORE authentication
@@ -237,10 +239,15 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
           console.error('ATXP middleware error:', error);
         }
 
-        // Create extended context with props for MCP handler
+        // Create extended context with props and ATXP initialization params for MCP handler
+        // Note: We pass the original config options rather than the built config
+        // because the built config contains class instances that don't serialize
         const extendedCtx = {
           ...ctx,
-          props: authContext
+          props: {
+            ...authContext,
+            atxpInitParams: config  // Pass ATXP initialization params to Durable Object
+          }
         };
 
         // Route to appropriate MCP endpoints
@@ -291,12 +298,7 @@ export function atxpCloudflareWorkerFromEnv(options: {
 }) {
   return {
     async fetch(request: Request, env: ATXPEnv, ctx: ExecutionContext): Promise<Response> {
-      // Initialize from environment on first request
-      if (!ATXPMcpApi.isInitialized()) {
-        initATXPFromEnv(env, options.serviceName);
-      }
-
-      // Use the main atxpCloudflareWorker function
+      // Use the main atxpCloudflareWorker function with env-based config
       const handler = atxpCloudflareWorker({
         config: {
           fundingDestination: env.FUNDING_DESTINATION!,

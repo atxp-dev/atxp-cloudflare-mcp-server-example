@@ -1,10 +1,12 @@
 import { RequirePaymentConfig, paymentRequiredError } from "@atxp/common";
+import { ATXPConfig } from "@atxp/server";
 import { getATXPConfig, atxpAccountId } from "./atxpWorkerContext.js";
 import { ATXPMcpApi } from "./atxpMcpApi.js";
 
-// Extended config to support authenticated user override
+// Extended config to support authenticated user override and ATXP init params
 interface ExtendedPaymentConfig extends RequirePaymentConfig {
   authenticatedUser?: string;
+  atxpInitParams?: import("./atxpMcpApi.js").ATXPMcpConfig;  // Allow passing ATXP initialization params
 }
 
 export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Promise<void> {
@@ -21,7 +23,7 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
     console.log('Worker context resource:', workerContext.getATXPResource()?.toString());
   }
   
-  // Get ATXP config from request-scoped context, fallback to API
+  // Get ATXP config: try request context first, then API, then initialize from params
   let config = getATXPConfig();
   console.log('ATXP config from request context:', config ? 'found' : 'null');
   
@@ -31,6 +33,18 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
       console.log('ATXP config from API fallback:', config ? 'found' : 'null');
     } catch (error) {
       console.log('ATXP config from API fallback: error -', error instanceof Error ? error.message : String(error));
+    }
+  }
+  
+  // If still no config and we have init params, initialize ATXP in this Durable Object
+  if (!config && paymentConfig.atxpInitParams) {
+    console.log('Initializing ATXP in Durable Object with params:', paymentConfig.atxpInitParams);
+    try {
+      ATXPMcpApi.init(paymentConfig.atxpInitParams);
+      config = ATXPMcpApi.getConfig();
+      console.log('ATXP initialized in Durable Object:', config ? 'success' : 'failed');
+    } catch (error) {
+      console.log('ATXP initialization failed:', error instanceof Error ? error.message : String(error));
     }
   }
   
@@ -64,7 +78,7 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
     payeeName: config.payeeName,
   };
 
-  config.logger.debug(`Processing payment: ${charge.amount} ${charge.currency} from ${charge.source} to ${charge.destination}`);
+  config.logger?.debug(`Processing payment: ${charge.amount} ${charge.currency} from ${charge.source} to ${charge.destination}`);
   
   try {
     // Use the real payment server to charge the user
@@ -75,22 +89,22 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
     console.log('Charge result type:', typeof result.success);
     
     if (!result.success) {
-      config.logger.info(`Payment failed, creating payment request`);
+      config.logger?.info(`Payment failed, creating payment request`);
       
       // Handle existing payment ID if available through getExistingPaymentId
       const existingPaymentId = await paymentConfig.getExistingPaymentId?.();
       if (existingPaymentId) {
-        config.logger.info(`Found existing payment ID ${existingPaymentId}`);
+        config.logger?.info(`Found existing payment ID ${existingPaymentId}`);
         throw paymentRequiredError(config.server, existingPaymentId, charge.amount);
       }
       
       // Create a new payment request
       const paymentRequestId = await config.paymentServer.createPaymentRequest(charge);
-      config.logger.info(`Created payment request ${paymentRequestId}`);
+      config.logger?.info(`Created payment request ${paymentRequestId}`);
       throw paymentRequiredError(config.server, paymentRequestId, charge.amount);
     }
     
-    config.logger.info(`Payment successful: ${charge.amount} ${charge.currency} from ${charge.source}`);
+    config.logger?.info(`Payment successful: ${charge.amount} ${charge.currency} from ${charge.source}`);
     
   } catch (error) {
     // Re-throw payment required errors as-is
@@ -98,7 +112,7 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
       throw error;
     }
     
-    config.logger.error(`Payment processing error: ${error instanceof Error ? error.message : String(error)}`);
+    config.logger?.error(`Payment processing error: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Payment processing failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

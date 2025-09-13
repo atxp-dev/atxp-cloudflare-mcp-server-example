@@ -19,10 +19,11 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 			{ name: z.string().optional() }, 
 			async ({ name }) => {
 				// Require payment of 0.01 USDC before processing
-				// Pass the authenticated user from this.props
+				// Pass the authenticated user and ATXP init params from this.props
 				await requirePayment({ 
 					price: new BigNumber(0.01),
-					authenticatedUser: this.props?.user
+					authenticatedUser: this.props?.user,
+					atxpInitParams: this.props?.atxpInitParams
 				});
 
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";

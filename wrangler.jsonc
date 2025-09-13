@@ -37,7 +37,7 @@
 	 * Environment Variables for ATXP
 	 */
 	"vars": {
-		"NODE_ENV": "development",
+		"NODE_ENV": "production",
 		"ATXP_SERVER": "https://auth.atxp.ai",
 		"FUNDING_DESTINATION": "0x7F9D1a879750168b8f4A59734B1262D1778fDB5A",
 		"FUNDING_NETWORK": "base"
