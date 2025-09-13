@@ -149,7 +149,7 @@ export interface ATXPEnv {
 /**
  * Helper function to initialize ATXP from Cloudflare Workers environment
  */
-export function initATXPFromEnv(env: ATXPEnv, payeeName?: string): void {
+export function initATXPFromEnv(env: ATXPEnv, payeeName?: string, allowHttp?: boolean): void {
   if (!env.FUNDING_DESTINATION) {
     throw new Error('FUNDING_DESTINATION environment variable not set');
   }
@@ -161,7 +161,7 @@ export function initATXPFromEnv(env: ATXPEnv, payeeName?: string): void {
     fundingDestination: env.FUNDING_DESTINATION,
     fundingNetwork: env.FUNDING_NETWORK as Network,
     payeeName: payeeName || 'MCP Server',
-    allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
+    allowHttp: allowHttp || false,
   });
 }
 
@@ -295,6 +295,7 @@ export function atxpCloudflareWorkerFromEnv(options: {
   mcpAgent: any;
   serviceName?: string;
   mountPaths?: { mcp?: string; sse?: string; root?: string; };
+  allowHttp?: boolean;
 }) {
   return {
     async fetch(request: Request, env: ATXPEnv, ctx: ExecutionContext): Promise<Response> {
@@ -304,7 +305,7 @@ export function atxpCloudflareWorkerFromEnv(options: {
           fundingDestination: env.FUNDING_DESTINATION!,
           fundingNetwork: env.FUNDING_NETWORK as Network,
           payeeName: options.serviceName || 'MCP Server',
-          allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true'
+          allowHttp: options.allowHttp || false
         },
         mcpAgent: options.mcpAgent,
         serviceName: options.serviceName,
