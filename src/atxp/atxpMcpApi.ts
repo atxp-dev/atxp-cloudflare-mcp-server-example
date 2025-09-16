@@ -200,10 +200,11 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
         }
         
         const url = new URL(request.url);
+        const resourceUrl = url.origin + "/";
 
         // Handle OAuth metadata endpoint BEFORE authentication
         if (url.pathname === "/.well-known/oauth-protected-resource") {
-          return ATXPMcpApi.createOAuthMetadata(url.origin + "/", serviceName);
+          return ATXPMcpApi.createOAuthMetadata(resourceUrl, serviceName);
         }
 
         // Initialize empty auth context
@@ -232,7 +233,7 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
             ...authContext,
             atxpInitParams: {
               ...config,
-              resourceUrl: url.origin + "/"  // Pass consistent resource URL
+              resourceUrl  // Pass consistent resource URL
             }
           }
         };
