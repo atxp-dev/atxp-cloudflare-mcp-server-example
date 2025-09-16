@@ -1,5 +1,5 @@
 import { ATXPConfig, checkTokenWebApi, sendOAuthChallengeWebApi, parseMcpRequestsWebApi } from "@atxp/server";
-import { ATXPWorkerContext, setCurrentRequestWithContext } from "./atxpWorkerContext.js";
+import { setATXPWorkerContext } from "./atxpWorkerContext.js";
 
 export class ATXPWorkerMiddleware {
   private config: ATXPConfig;
@@ -41,9 +41,8 @@ export class ATXPWorkerMiddleware {
         return challengeResponse;
       }
       
-      // Create and store context for this request using new approach
-      const context = new ATXPWorkerContext(this.config, resource, tokenCheck);
-      setCurrentRequestWithContext(context);
+      // Create and store context for this request using SDK-compatible structure
+      setATXPWorkerContext(this.config, resource, tokenCheck);
       
       // Let the request continue to MCP handling
       return null;

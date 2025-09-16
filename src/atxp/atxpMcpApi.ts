@@ -1,5 +1,5 @@
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
-import { buildWorkerATXPConfig, getATXPWorkerContext } from "./atxpWorkerContext.js";
+import { buildWorkerATXPConfig, getATXPWorkerContext, atxpAccountId } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
 import { ATXPConfig } from "@atxp/server";
 import { McpAgent } from "agents/mcp";
@@ -90,14 +90,14 @@ export class ATXPMcpApi {
    */
   static createAuthContext(): ATXPAuthContext {
     const atxpWorkerContext = getATXPWorkerContext();
-    
+
     if (!atxpWorkerContext) {
       return {};
     }
 
-    const tokenData = atxpWorkerContext.getTokenData();
+    const tokenData = atxpWorkerContext.tokenData;
     return {
-      user: atxpWorkerContext.atxpAccountId() || undefined,
+      user: atxpAccountId() || undefined,
       claims: {
         sub: tokenData?.sub,
         name: tokenData?.name,
@@ -117,7 +117,7 @@ export class ATXPMcpApi {
       bearer_methods_supported: ["header"],
       scopes_supported: ["read", "write"],
     };
-    
+
     return new Response(JSON.stringify(metadata), {
       status: 200,
       headers: { "Content-Type": "application/json" }
