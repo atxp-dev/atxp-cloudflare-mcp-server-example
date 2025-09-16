@@ -98,10 +98,7 @@ export class ATXPMcpApi {
     const tokenData = atxpWorkerContext.tokenData;
     return {
       user: atxpAccountId() || undefined,
-      claims: {
-        sub: tokenData?.sub,
-        ...tokenData, // Include any additional token claims
-      }
+      claims: tokenData
     };
   }
 
