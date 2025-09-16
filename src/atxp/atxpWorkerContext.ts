@@ -1,77 +1,39 @@
-import { ATXPConfig, ATXPArgs, TokenCheck, buildServerConfig } from "@atxp/server";
-// Store the ATXP context in the request context since Cloudflare Workers 
-// don't support AsyncLocalStorage
-export class ATXPWorkerContext {
-  private config: ATXPConfig;
-  private tokenData: any | null = null;
-  private resource: URL;
+import { ATXPConfig, TokenCheck } from "@atxp/server";
+import { TokenData } from "@atxp/common";
 
-  constructor(config: ATXPConfig, resource: URL, tokenCheck?: TokenCheck) {
-    this.config = config;
-    this.resource = resource;
-    this.tokenData = tokenCheck?.data || null;
-  }
-
-  getATXPConfig(): ATXPConfig {
-    return this.config;
-  }
-
-  getATXPResource(): URL {
-    return this.resource;
-  }
-
-  atxpAccountId(): string | null {
-    return this.tokenData?.sub ?? null;
-  }
-
-  getTokenData() {
-    return this.tokenData;
-  }
+// Use the same context structure as the SDK but with global storage
+// since Cloudflare Workers don't support AsyncLocalStorage
+type ATXPWorkerContextType = {
+  userToken: string | null;
+  tokenData: TokenData | null;
+  config: ATXPConfig;
 }
 
 // Simple global context storage for Cloudflare Workers
 // Since each Worker handles one request at a time, this is safe
-let currentContext: ATXPWorkerContext | null = null;
+let currentContext: ATXPWorkerContextType | null = null;
 
-export function setCurrentRequestWithContext(context: ATXPWorkerContext): void {
-  currentContext = context;
+export function setATXPWorkerContext(config: ATXPConfig, tokenCheck?: TokenCheck): void {
+  currentContext = {
+    userToken: tokenCheck?.token || null,
+    tokenData: tokenCheck?.data || null,
+    config,
+  };
 }
 
-export function setATXPWorkerContext(context: ATXPWorkerContext) {
-  currentContext = context;
-}
-
-export function getATXPWorkerContext(): ATXPWorkerContext | null {
+export function getATXPWorkerContext(): ATXPWorkerContextType | null {
   return currentContext;
 }
 
 
-// Helper functions that mirror the Express version
+// Helper functions that mirror the SDK's context functions exactly
 export function getATXPConfig(): ATXPConfig | null {
   const context = getATXPWorkerContext();
-  return context?.getATXPConfig() ?? null;
-}
-
-export function getATXPResource(): URL | null {
-  const context = getATXPWorkerContext();
-  return context?.getATXPResource() ?? null;
+  return context?.config ?? null;
 }
 
 export function atxpAccountId(): string | null {
   const context = getATXPWorkerContext();
-  return context?.atxpAccountId() ?? null;
+  return context?.tokenData?.sub ?? null;
 }
 
-// Build configuration for Cloudflare Workers
-export function buildWorkerATXPConfig(args: ATXPArgs): ATXPConfig {
-  // Override the global fetch to fix Cloudflare Workers context issues
-  if (typeof globalThis.fetch !== 'undefined') {
-    // Store original fetch in case we need it
-    const originalFetch = globalThis.fetch;
-    
-    // Override global fetch with properly bound version
-    // This ensures that internal ATXP HTTP requests work correctly in Cloudflare Workers
-    globalThis.fetch = originalFetch.bind(globalThis);
-  }
-  return buildServerConfig(args);
-}

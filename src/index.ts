@@ -3,7 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BigNumber } from "bignumber.js";
 import { requirePayment } from "./atxp/requirePaymentWorker.js";
-import { ATXPAuthContext, atxpCloudflareWorkerFromEnv } from "./atxp/atxpMcpApi.js";
+import { atxpCloudflareWorkerFromEnv } from "./atxp/atxpCloudflareWorkerFromEnv.js";
+import { ATXPAuthContext } from "./atxp/types.js";
 
 // Define our MCP agent with ATXP payment integration
 export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
@@ -23,11 +24,12 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 				await requirePayment({ 
 					price: new BigNumber(0.01),
 					authenticatedUser: this.props?.user,
+					userToken: this.props?.userToken,
 					atxpInitParams: this.props?.atxpInitParams
 				});
 
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";
-				const userInfo = this.props?.claims?.name || this.props?.user || "anonymous user";
+				const userInfo = this.props?.user || "anonymous user";
 				const message = `${greeting} Thanks for your 0.01 USDC payment, ${userInfo}! 💰`;
 				
 				return {
