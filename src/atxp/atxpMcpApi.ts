@@ -2,6 +2,7 @@ import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
 import { buildWorkerATXPConfig, getATXPWorkerContext } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
 import { ATXPConfig } from "@atxp/server";
+import { McpAgent } from "agents/mcp";
 
 /**
  * Configuration options for initializing ATXP with MCP servers
@@ -156,11 +157,11 @@ export interface ATXPCloudflareWorkerHandler {
   (request: Request, env: any, ctx: ExecutionContext): Promise<Response | null>;
 }
 
-export interface ATXPCloudflareWorkerOptions {
+export interface ATXPCloudflareWorkerOptions<Env = unknown, State = unknown, Props extends Record<string, unknown> = Record<string, unknown>> {
   /** Configuration for ATXP */
   config: ATXPMcpConfig;
   /** The MCP agent class to wrap */
-  mcpAgent: any;
+  mcpAgent: typeof McpAgent<Env, State, Props>;
   /** Service name for OAuth metadata */
   serviceName?: string;
   /** Mount paths for MCP endpoints */
@@ -183,7 +184,7 @@ export interface ATXPCloudflareWorkerOptions {
  * });
  * ```
  */
-export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
+export function atxpCloudflareWorker<Env = unknown, State = unknown, Props extends Record<string, unknown> = Record<string, unknown>>(options: ATXPCloudflareWorkerOptions<Env, State, Props>) {
   const { 
     config, 
     mcpAgent, 
@@ -287,8 +288,8 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
  * };
  * ```
  */
-export function atxpCloudflareWorkerFromEnv(options: {
-  mcpAgent: any;
+export function atxpCloudflareWorkerFromEnv<Env = unknown, State = unknown, Props extends Record<string, unknown> = Record<string, unknown>>(options: {
+  mcpAgent: typeof McpAgent<Env, State, Props>;
   serviceName?: string;
   mountPaths?: { mcp?: string; sse?: string; root?: string; };
   allowHttp?: boolean;
