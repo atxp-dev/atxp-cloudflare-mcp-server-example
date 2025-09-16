@@ -230,7 +230,10 @@ export function atxpCloudflareWorker(options: ATXPCloudflareWorkerOptions) {
           ...ctx,
           props: {
             ...authContext,
-            atxpInitParams: config  // Pass ATXP initialization params to Durable Object
+            atxpInitParams: {
+              ...config,
+              resourceUrl: url.origin + "/"  // Pass consistent resource URL
+            }
           }
         };
 
