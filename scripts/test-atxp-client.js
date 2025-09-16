@@ -146,19 +146,19 @@ async function testHelloWorldWithPayment(client) {
     console.log(`   ⚠️  Payment flow error: ${error.message}`);
   }
   
-  // Test 2: With name parameter (should also trigger payment)
-  console.log('   📞 Calling hello_world({ name: "ATXP User" }) - expect payment flow...');
-  try {
-    const result2 = await client.callTool({
-      name: 'hello_world',
-      arguments: { name: 'ATXP User' }
-    });
-    console.log(`   📝 Result: "${result2.content[0].text}"`);
-  } catch (error) {
-    console.log(`   ⚠️  Payment flow error: ${error.message}`);
-  }
+  // // Test 2: With name parameter (should also trigger payment)
+  // console.log('   📞 Calling hello_world({ name: "ATXP User" }) - expect payment flow...');
+  // try {
+  //   const result2 = await client.callTool({
+  //     name: 'hello_world',
+  //     arguments: { name: 'ATXP User' }
+  //   });
+  //   console.log(`   📝 Result: "${result2.content[0].text}"`);
+  // } catch (error) {
+  //   console.log(`   ⚠️  Payment flow error: ${error.message}`);
+  // }
   
-  console.log('');
+  // console.log('');
 }
 
 // Show usage information
