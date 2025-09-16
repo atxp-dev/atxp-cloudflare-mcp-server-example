@@ -185,12 +185,15 @@ export interface ATXPCloudflareWorkerOptions<Env = unknown, State = unknown, Pro
  * ```
  */
 export function atxpCloudflareWorker<Env = unknown, State = unknown, Props extends Record<string, unknown> = Record<string, unknown>>(options: ATXPCloudflareWorkerOptions<Env, State, Props>) {
-  const { 
-    config, 
-    mcpAgent, 
+  const {
+    config,
+    mcpAgent,
     serviceName = "ATXP MCP Server",
     mountPaths = { mcp: "/mcp", sse: "/sse", root: "/" }
   } = options;
+
+  // Destructure mount paths with guaranteed defaults
+  const { mcp = "/mcp", sse = "/sse", root = "/" } = mountPaths;
   
   return {
     async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
@@ -240,17 +243,17 @@ export function atxpCloudflareWorker<Env = unknown, State = unknown, Props exten
         };
 
         // Route to appropriate MCP endpoints
-        if (url.pathname === mountPaths.sse || url.pathname === mountPaths.sse + "/message") {
-          return mcpAgent.serveSSE(mountPaths.sse).fetch(request, env, extendedCtx);
+        if (url.pathname === sse || url.pathname === sse + "/message") {
+          return mcpAgent.serveSSE(sse).fetch(request, env, extendedCtx);
         }
 
-        if (url.pathname === mountPaths.mcp) {
-          return mcpAgent.serve(mountPaths.mcp).fetch(request, env, extendedCtx);
+        if (url.pathname === mcp) {
+          return mcpAgent.serve(mcp).fetch(request, env, extendedCtx);
         }
 
         // Handle root path for MCP connections
-        if (url.pathname === mountPaths.root) {
-          return mcpAgent.serve(mountPaths.root).fetch(request, env, extendedCtx);
+        if (url.pathname === root) {
+          return mcpAgent.serve(root).fetch(request, env, extendedCtx);
         }
 
         return new Response("Not found", { status: 404 });
