@@ -4,6 +4,7 @@ import { TokenData } from "@atxp/common";
 // Use the same context structure as the SDK but with global storage
 // since Cloudflare Workers don't support AsyncLocalStorage
 type ATXPWorkerContextType = {
+  userToken: string | null;
   tokenData: TokenData | null;
   config: ATXPConfig;
 }
@@ -14,6 +15,7 @@ let currentContext: ATXPWorkerContextType | null = null;
 
 export function setATXPWorkerContext(config: ATXPConfig, tokenCheck?: TokenCheck): void {
   currentContext = {
+    userToken: tokenCheck?.token || null,
     tokenData: tokenCheck?.data || null,
     config,
   };

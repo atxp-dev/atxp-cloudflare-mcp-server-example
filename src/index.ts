@@ -24,6 +24,7 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 				await requirePayment({ 
 					price: new BigNumber(0.01),
 					authenticatedUser: this.props?.user,
+					userToken: this.props?.userToken,
 					atxpInitParams: this.props?.atxpInitParams
 				});
 

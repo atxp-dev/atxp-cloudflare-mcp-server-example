@@ -69,10 +69,11 @@ export class ATXPMcpApi {
       return {};
     }
 
-    const tokenData = atxpWorkerContext.tokenData;
+    const {userToken, tokenData} = atxpWorkerContext;
     return {
       user: atxpAccountId() || undefined,
-      claims: tokenData || undefined
+      userToken: userToken || undefined,
+      claims: tokenData || undefined,
     };
   }
 

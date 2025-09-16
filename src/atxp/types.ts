@@ -22,9 +22,9 @@ export interface ATXPMcpConfig {
  */
 export interface ATXPAuthContext {
   user?: string;
+  userToken?: string;
   claims?: {
     sub?: string;
-    name?: string;
     [key: string]: any;
   };
   atxpInitParams?: ATXPMcpConfig;  // Pass ATXP initialization params to Durable Object

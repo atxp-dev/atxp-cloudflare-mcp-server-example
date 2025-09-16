@@ -7,6 +7,7 @@ import { ATXPMcpConfig } from "./types.js";
 // Extended config to support authenticated user override and ATXP init params
 interface ExtendedPaymentConfig extends RequirePaymentConfig {
   authenticatedUser?: string;
+  userToken?: string;
   atxpInitParams?: ATXPMcpConfig;  // Allow passing ATXP initialization params
 }
 
@@ -29,10 +30,10 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   }
 
   // Use authenticated user from props (preferred) or fallback to context
-  let user = paymentConfig.authenticatedUser;
+  let {authenticatedUser, userToken} = paymentConfig
 
-  if (!user) {
-    throw new Error('No authenticated user found - payment required');
+  if (!authenticatedUser || !userToken) {
+    throw new Error('No authenticated user and/or user token found - payment required');
   }
 
   // Use the SDK's requirePayment function with temporary context
@@ -41,7 +42,7 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
     throw new Error('Resource URL not provided in ATXP init params');
   }
   const resource = new URL(resourceUrl);
-  const tokenInfo = { token: null, data: { active: true, sub: user } };
+  const tokenInfo = { token: userToken, data: { active: true, sub: authenticatedUser } };
   await withATXPContext(config, resource, tokenInfo, async () => {
     await requirePaymentSDK(paymentConfig);
   });
