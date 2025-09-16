@@ -98,7 +98,7 @@ export class ATXPMcpApi {
     const tokenData = atxpWorkerContext.tokenData;
     return {
       user: atxpAccountId() || undefined,
-      claims: tokenData
+      claims: tokenData || undefined
     };
   }
 
@@ -213,7 +213,7 @@ export function atxpCloudflareWorker<Env = unknown, State = unknown, Props exten
         // Handle ATXP middleware processing
         try {
           // Check if ATXP middleware should handle this request
-          const atxpResponse = await ATXPMcpApi.getMiddleware().handleRequest(request, env);
+          const atxpResponse = await ATXPMcpApi.getMiddleware().handleRequest(request);
           if (atxpResponse) {
             return atxpResponse;
           }

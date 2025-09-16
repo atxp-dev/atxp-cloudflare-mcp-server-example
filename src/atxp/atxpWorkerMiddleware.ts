@@ -8,7 +8,7 @@ export class ATXPWorkerMiddleware {
     this.config = config;
   }
 
-  async handleRequest(request: Request, env: any): Promise<Response | null> {
+  async handleRequest(request: Request): Promise<Response | null> {
     try {
       const logger = this.config.logger;
       const requestUrl = new URL(request.url);
@@ -42,7 +42,7 @@ export class ATXPWorkerMiddleware {
       }
       
       // Create and store context for this request using SDK-compatible structure
-      setATXPWorkerContext(this.config, resource, tokenCheck);
+      setATXPWorkerContext(this.config, tokenCheck);
       
       // Let the request continue to MCP handling
       return null;

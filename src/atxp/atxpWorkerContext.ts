@@ -6,18 +6,16 @@ import { TokenData } from "@atxp/common";
 type ATXPWorkerContextType = {
   tokenData: TokenData | null;
   config: ATXPConfig;
-  resource: URL;
 }
 
 // Simple global context storage for Cloudflare Workers
 // Since each Worker handles one request at a time, this is safe
 let currentContext: ATXPWorkerContextType | null = null;
 
-export function setATXPWorkerContext(config: ATXPConfig, resource: URL, tokenCheck?: TokenCheck): void {
+export function setATXPWorkerContext(config: ATXPConfig, tokenCheck?: TokenCheck): void {
   currentContext = {
     tokenData: tokenCheck?.data || null,
     config,
-    resource
   };
 }
 
@@ -30,11 +28,6 @@ export function getATXPWorkerContext(): ATXPWorkerContextType | null {
 export function getATXPConfig(): ATXPConfig | null {
   const context = getATXPWorkerContext();
   return context?.config ?? null;
-}
-
-export function getATXPResource(): URL | null {
-  const context = getATXPWorkerContext();
-  return context?.resource ?? null;
 }
 
 export function atxpAccountId(): string | null {
