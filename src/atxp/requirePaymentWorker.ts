@@ -30,11 +30,6 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   // Use authenticated user from props (preferred) or fallback to context
   let user = paymentConfig.authenticatedUser;
 
-  // Fallback to request-scoped context if not provided
-  if (!user) {
-    user = atxpAccountId() || undefined;
-  }
-
   if (!user) {
     throw new Error('No authenticated user found - payment required');
   }
