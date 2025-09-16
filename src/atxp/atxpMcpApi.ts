@@ -1,8 +1,8 @@
 import { ATXPWorkerMiddleware } from "./atxpWorkerMiddleware.js";
 import { buildWorkerATXPConfig, getATXPWorkerContext, atxpAccountId } from "./atxpWorkerContext.js";
 import { Network } from "@atxp/common";
-import { ATXPConfig } from "@atxp/server";
 import { McpAgent } from "agents/mcp";
+import { ATXPConfig } from "@atxp/server";
 
 /**
  * Configuration options for initializing ATXP with MCP servers
@@ -39,7 +39,7 @@ export interface ATXPAuthContext {
  */
 export class ATXPMcpApi {
   private static middleware: ATXPWorkerMiddleware | null = null;
-  private static config: any = null;
+  private static config: ATXPConfig | null = null;
 
   /**
    * Initialize ATXP middleware for MCP server
