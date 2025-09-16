@@ -2,11 +2,12 @@ import { RequirePaymentConfig } from "@atxp/common";
 import { requirePayment as requirePaymentSDK, withATXPContext } from "@atxp/server";
 import { getATXPConfig } from "./atxpWorkerContext.js";
 import { ATXPMcpApi } from "./atxpMcpApi.js";
+import { ATXPMcpConfig } from "./types.js";
 
 // Extended config to support authenticated user override and ATXP init params
 interface ExtendedPaymentConfig extends RequirePaymentConfig {
   authenticatedUser?: string;
-  atxpInitParams?: import("./atxpMcpApi.js").ATXPMcpConfig;  // Allow passing ATXP initialization params
+  atxpInitParams?: ATXPMcpConfig;  // Allow passing ATXP initialization params
 }
 
 export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Promise<void> {
