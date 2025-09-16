@@ -27,7 +27,7 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 				});
 
 				const greeting = name ? `Hello, ${name}!` : "Hello, World!";
-				const userInfo = this.props?.claims?.name || this.props?.user || "anonymous user";
+				const userInfo = this.props?.user || "anonymous user";
 				const message = `${greeting} Thanks for your 0.01 USDC payment, ${userInfo}! 💰`;
 				
 				return {
