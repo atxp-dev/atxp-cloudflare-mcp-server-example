@@ -15,6 +15,8 @@ export interface ATXPMcpConfig {
   payeeName?: string;
   /** Whether to allow HTTP connections (for development) */
   allowHttp?: boolean;
+  /** The resource URL for this MCP server (used for context) */
+  resourceUrl?: string;
 }
 
 /**

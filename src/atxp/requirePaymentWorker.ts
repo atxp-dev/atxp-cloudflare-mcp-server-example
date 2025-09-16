@@ -40,9 +40,10 @@ export async function requirePayment(paymentConfig: ExtendedPaymentConfig): Prom
   }
 
   // Use the SDK's requirePayment function with temporary context
-  const dummyResource = new URL('https://example.com'); // Resource URL not used by requirePayment
+  const resourceUrl = paymentConfig.atxpInitParams?.resourceUrl || 'https://localhost:3000';
+  const resource = new URL(resourceUrl);
   const tokenInfo = { token: null, data: { active: true, sub: user } };
-  await withATXPContext(config, dummyResource, tokenInfo, async () => {
+  await withATXPContext(config, resource, tokenInfo, async () => {
     await requirePaymentSDK(paymentConfig);
   });
 }
