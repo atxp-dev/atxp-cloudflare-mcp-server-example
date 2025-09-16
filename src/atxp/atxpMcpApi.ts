@@ -100,7 +100,6 @@ export class ATXPMcpApi {
       user: atxpAccountId() || undefined,
       claims: {
         sub: tokenData?.sub,
-        name: tokenData?.name,
         ...tokenData, // Include any additional token claims
       }
     };
