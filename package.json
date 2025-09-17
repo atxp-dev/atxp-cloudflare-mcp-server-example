@@ -22,7 +22,7 @@
 		"@atxp/server": "^0.3.0",
 		"@atxp/common": "^0.3.0",
 		"@atxp/client": "^0.3.0",
-		"@atxp/cloudflare-middleware": "file:../atxp-dev-sdk/packages/atxp-cloudflare-middleware",
+		"@atxp/cloudflare": "file:../atxp-dev-sdk/packages/atxp-cloudflare",
 		"bignumber.js": "^9.1.2",
 		"dotenv": "^16.4.5"
 	},
