@@ -2,7 +2,7 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BigNumber } from "bignumber.js";
-import { requirePayment, atxpCloudflareWorkerFromEnv, ATXPAuthContext } from "@atxp/cloudflare";
+import { requirePayment, atxpCloudflare, ATXPAuthContext } from "@atxp/cloudflare";
 
 // Define our MCP agent with ATXP payment integration
 export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
@@ -42,12 +42,12 @@ export class MyMCP extends McpAgent<Env, unknown, ATXPAuthContext> {
 export default {
 	async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
 		// Create the handler with environment-based configuration
-		const handler = atxpCloudflareWorkerFromEnv({
+		const handler = atxpCloudflare({
 			mcpAgent: MyMCP,
 			serviceName: "ATXP MCP Server Demo",
 			allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
-			fundingDestination: env.FUNDING_DESTINATION,
-			fundingNetwork: env.FUNDING_NETWORK
+			destination: env.FUNDING_DESTINATION,
+			network: env.FUNDING_NETWORK
 		});
 		
 		return handler.fetch(request, env, ctx);
