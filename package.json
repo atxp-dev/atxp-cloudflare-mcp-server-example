@@ -19,9 +19,10 @@
 		"@modelcontextprotocol/sdk": "1.17.5",
 		"agents": "^0.1.2",
 		"zod": "^3.25.76",
-		"@atxp/server": "^0.3.0",
-		"@atxp/common": "^0.3.0",
-		"@atxp/client": "^0.3.0",
+		"@atxp/server": "^0.4.0",
+		"@atxp/common": "^0.4.0",
+		"@atxp/client": "^0.4.0",
+		"@atxp/cloudflare": "^0.4.0",
 		"bignumber.js": "^9.1.2",
 		"dotenv": "^16.4.5"
 	},
