@@ -1,5 +1,8 @@
 # ATXP-Protected MCP Server on Cloudflare Workers
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/atxp-dev/atxp-cloudflare-mcp-server-example/)
+
+
 This example demonstrates how to build a payment-protected MCP server using ATXP (Authentic Transaction Protocol) on Cloudflare Workers. Users must pay in cryptocurrency (USDC on Base network) to use the MCP tools.
 
 ## Features
