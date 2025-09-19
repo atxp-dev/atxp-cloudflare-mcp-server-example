@@ -29,37 +29,18 @@ This example demonstrates how to build a payment-protected MCP server using ATXP
 
 ### Environment Configuration
 
-Copy `.env.example` to `.env` and configure:
+Add the following to `.env`.
 
 ```bash
-# ATXP Authentication Server
-ATXP_SERVER=https://auth.atxp.ai
-
 # Development security setting - allows HTTP for localhost testing
 ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE=true
 
-# Your ATXP connection string for client testing
+# Your ATXP connection string for receiving payments and client testing
 ATXP_CONNECTION_STRING=https://accounts.atxp.ai?connection_token=YOUR_TOKEN
-
-# Payment destination (your wallet address)
-FUNDING_DESTINATION=0x7F9D1a879750168b8f4A59734B1262D1778fDB5A
-FUNDING_NETWORK=base
 ```
 
 ### Production Deployment
-
-Update `wrangler.jsonc` with your production settings:
-
-```json
-{
-  "vars": {
-    "ATXP_SERVER": "https://auth.atxp.ai",
-    "FUNDING_DESTINATION": "0xYOUR_WALLET_ADDRESS",
-    "FUNDING_NETWORK": "base",
-    "ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE": "false"
-  }
-}
-```
+Use `wranger secret put ATXP_CONNECTION_STRING` to set your connection string
 
 Deploy to Cloudflare Workers:
 
@@ -93,20 +74,30 @@ npm run test:remote
 Create your main handler in `src/index.ts`:
 
 ```typescript
-import { atxpCloudflareWorkerFromEnv } from "./atxp/atxpMcpApi.js";
+import { McpAgent } from "agents/mcp";
+import { atxpCloudflare, type ATXPCloudflareOptions } from "@atxp/cloudflare";
+import { ATXPPaymentDestination } from "@atxp/server";
+
+const createOptions = (env: Env) => {
+  const paymentDestination = new ATXPPaymentDestination(
+    env.ATXP_CONNECTION_STRING,
+  );
+  paymentDestination.destination =
+    paymentDestination.destination.bind(paymentDestination);
+  return {
+    mcpAgent: MyMCP,
+    payeeName: "ATXP MCP Server Demo",
+    allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === "true",
+    paymentDestination,
+  } as ATXPCloudflareOptions;
+};
 
 export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    // Create the handler with environment-based configuration
-    const handler = atxpCloudflareWorkerFromEnv({
-      mcpAgent: MyMCP,
-      serviceName: "ATXP MCP Server Demo",
-      allowHttp: env.ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE === 'true',
-      fundingDestination: env.FUNDING_DESTINATION,
-      fundingNetwork: env.FUNDING_NETWORK
-    });
-    
-    return handler.fetch(request, env, ctx);
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const cloudflareOptions = createOptions(env);
+    const handler = atxpCloudflare(cloudflareOptions);
+    const response = await handler.fetch(request, env, ctx);
+    return response;
   }
 };
 ```
@@ -116,17 +107,26 @@ export default {
 Add payment-protected tools in your MCP class:
 
 ```typescript
+import { requirePayment } from "@atxp/cloudflare";
+import { BigNumber } from "bignumber.js";
+
 // Add to MyMCP class init() method
 this.server.tool(
   "my_premium_tool",
   { input: z.string() },
   async ({ input }) => {
-    // Require payment before processing
-    await requirePayment({ 
-      price: new BigNumber(0.05), // 0.05 USDC
-      authenticatedUser: this.props?.user,
-      atxpInitParams: this.props?.atxpInitParams
-    });
+    if (!this.props) {
+      throw new Error("ATXP props are not initialized");
+    }
+
+    const options = createOptions(this.env);
+    await requirePayment(
+      {
+        price: new BigNumber(0.05), // 0.05 USDC
+      },
+      options,
+      this.props,
+    );
 
     // Your tool logic here
     return {
@@ -140,42 +140,41 @@ this.server.tool(
 
 ### ATXP Integration Functions
 
-#### `atxpCloudflareWorkerFromEnv(options)`
+#### `atxpCloudflare(options)`
 
 Main wrapper for creating ATXP-protected Cloudflare Workers:
 
 ```typescript
-atxpCloudflareWorkerFromEnv({
+atxpCloudflare({
   mcpAgent: MyMCP,                    // Your MCP agent class
-  serviceName?: string,               // Display name for OAuth
+  payeeName?: string,                 // Display name for OAuth
   allowHttp?: boolean,                // Allow HTTP for development
-  fundingDestination: string,         // Wallet address for payments
-  fundingNetwork: Network,            // Blockchain network ("base", etc.)
+  paymentDestination: ATXPPaymentDestination, // Payment destination instance
   mountPaths?: {                      // Optional custom paths
     mcp?: string,
-    sse?: string, 
+    sse?: string,
     root?: string
   }
 })
 ```
 
-#### `requirePayment(config)`
+#### `requirePayment(paymentRequest, options, props)`
 
 Payment enforcement in tool handlers:
 
 ```typescript
-await requirePayment({
-  price: BigNumber,                   // Payment amount in USDC
-  authenticatedUser?: string,         // User ID from this.props?.user
-  atxpInitParams?: ATXPMcpConfig     // ATXP config from this.props?.atxpInitParams
-});
+await requirePayment(
+  {
+    price: BigNumber,                 // Payment amount in USDC
+  },
+  options: ATXPCloudflareOptions,     // Options from createOptions()
+  props: ATXPMCPAgentProps            // ATXP props from this.props
+);
 ```
 
 ### Environment Variables
 
-- `FUNDING_DESTINATION` - Wallet address for receiving payments
-- `FUNDING_NETWORK` - Blockchain network (e.g., "base", "ethereum")
-- `ATXP_SERVER` - ATXP authentication server URL
+- `ATXP_CONNECTION_STRING` - ATXP connection string containing payment destination and network configuration
 - `ALLOW_INSECURE_HTTP_REQUESTS_DEV_ONLY_PLEASE` - HTTP allowance for development
 
 
